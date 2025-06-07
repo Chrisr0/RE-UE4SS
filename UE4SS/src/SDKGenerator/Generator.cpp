@@ -1027,6 +1027,11 @@ namespace RC::UEGenerator
                 return false;
             }
             auto it = str.begin();
+            if (*it > 127)
+            {
+                // is not ASCII character
+                return false;
+            }
             if (it == str.end() || std::isdigit(*it))
             {
                 // string empty or first char is digit
@@ -1035,6 +1040,11 @@ namespace RC::UEGenerator
             for (; it != str.end(); ++it)
             {
                 auto c = *it;
+                if (c < 0 || c > 127)
+                {
+                    // is not ASCII character
+                    return false;
+                }
                 if (c != '_' && !std::isalnum(c))
                 {
                     // is not underscore or alphanumeric in current locale
