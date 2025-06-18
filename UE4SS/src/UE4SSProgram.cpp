@@ -161,6 +161,80 @@ namespace RC
         return lib;
     }
 
+    auto UE4SSProgram::backup_saves() -> void
+    {
+        try
+        {
+            Output::send(STR("Creating save backup\n"));
+            // Create SaveBackup if it doesn't exist
+            std::filesystem::path backupDir = m_working_directory / "SaveBackup";
+            if (!std::filesystem::exists(backupDir)) std::filesystem::create_directory(backupDir);
+
+            // Get %APPDATA%\..\Local\SB\Saved\SaveGames
+            char* appdata = std::getenv("APPDATA");
+            if (!appdata)
+            {
+                Output::send(STR("APPDATA env var not found\n"));
+                return;
+                //throw std::runtime_error("APPDATA env var not found");
+            }
+            std::filesystem::path saveGamesDir = std::filesystem::path(appdata).parent_path() / "Local" / "SB" / "Saved" / "SaveGames";
+
+            // Find Save0.sav in subdirectories
+            std::filesystem::path saveFile;
+            for (const auto& entry : std::filesystem::directory_iterator(saveGamesDir))
+            {
+                if (std::filesystem::is_directory(entry))
+                {
+                    std::filesystem::path candidate = entry.path() / "StellarBladeSave00.sav";
+                    if (std::filesystem::exists(candidate))
+                    {
+                        saveFile = candidate;
+                        break;
+                    }
+                }
+            }
+            if (saveFile.empty())
+            {
+                Output::send(STR("StellarBladeSave00.sav not found\n"));
+                return;
+                //throw std::runtime_error("StellarBladeSave00.sav not found");
+            }
+
+            // Generate timestamp suffix
+            auto now = std::chrono::system_clock::now();
+            std::time_t t_c = std::chrono::system_clock::to_time_t(now);
+            std::tm local_tm;
+#ifdef _WIN32
+            localtime_s(&local_tm, &t_c);
+#else
+            local_tm = *std::localtime(&t_c);
+#endif
+            std::ostringstream oss;
+            oss << std::put_time(&local_tm, "%Y%m%d_%H%M%S");
+
+            // Copy to SaveBackup with timestamp
+            std::filesystem::path destFile = backupDir / ("StellarBladeSave00_" + oss.str() + ".sav");
+            std::filesystem::copy_file(saveFile, destFile, std::filesystem::copy_options::overwrite_existing);
+
+            // Maintain only 3 newest files
+            std::vector<std::filesystem::directory_entry> files;
+            for (const auto& f : std::filesystem::directory_iterator(backupDir))
+            {
+                if (f.is_regular_file() && f.path().extension() == ".sav") files.push_back(f);
+            }
+            std::sort(files.begin(), files.end(), [](auto& a, auto& b) {
+                return std::filesystem::last_write_time(a) > std::filesystem::last_write_time(b);
+            });
+            for (size_t i = 3; i < files.size(); ++i)
+                std::filesystem::remove(files[i].path());
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "[Backup Error] " << e.what() << "\n";
+        }
+    }
+
     UE4SSProgram::UE4SSProgram(const std::filesystem::path& moduleFilePath, std::initializer_list<BinaryOptions> options) : MProgram(options)
     {
         ProfilerScope();
@@ -277,7 +351,7 @@ namespace RC
             Unreal::UnrealInitializer::SetupUnrealModules();
 
             setup_mod_directory_path();
-
+            backup_saves();
             setup_mods();
             install_cpp_mods();
             start_cpp_mods(IsInitialStartup::Yes);

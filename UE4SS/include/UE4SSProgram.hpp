@@ -194,6 +194,7 @@ namespace RC
         auto share_lua_functions() -> void;
         auto on_program_start() -> void;
         auto setup_unreal_properties() -> void;
+        auto backup_saves() -> void;
 
       protected:
         auto update() -> void;
