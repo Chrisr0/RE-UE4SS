@@ -254,7 +254,14 @@ namespace RC
                         [&scan_result](void* address) {
                             Unreal::FText text{};
                             SEH_TRY({ text = Unreal::FText(STR("bCanBeDamaged"), address); })
-                            SEH_EXCEPT({ Output::send<LogLevel::Error>(STR("Error: Crashed calling FText constructor.\n")); });
+                            __except (SEH_exception_filter(GetExceptionCode(), GetExceptionInformation()))
+                            {
+                                Output::send<LogLevel::Error>(STR("Error: Crashed calling FText constructor.\n"));
+                                return DidLuaScanSucceed::No;
+                            }
+                            //SEH_EXCEPT({ Output::send<LogLevel::Error>(STR("Error: Crashed calling FText constructor.\n")); });
+
+
 
                             DidLuaScanSucceed did_succeed{};
                             SEH_TRY({
