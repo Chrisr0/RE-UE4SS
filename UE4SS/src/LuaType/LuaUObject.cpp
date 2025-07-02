@@ -402,6 +402,7 @@ namespace RC::LuaType
             }
             else if (params.lua.is_nil())
             {
+                params.lua.discard_value(params.stored_at_index);
                 *property_value = nullptr;
             }
             else
@@ -437,7 +438,7 @@ namespace RC::LuaType
             }
             else if (params.lua.is_nil())
             {
-                params.lua.discard_value();
+                params.lua.discard_value(params.stored_at_index);
             }
             else
             {
@@ -1305,6 +1306,7 @@ namespace RC::LuaType
             }
             else if (params.lua.is_nil())
             {
+                params.lua.discard_value(params.stored_at_index);
                 *property_value = nullptr;
             }
             else
